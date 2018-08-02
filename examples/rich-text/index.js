@@ -93,12 +93,26 @@ class RichTextExample extends React.Component {
           value={this.state.value}
           onChange={this.onChange}
           onKeyDown={this.onKeyDown}
+          onCompositionStart={this.onCompositionStart}
+          onCompositionEnd={this.onCompositionEnd}
           renderNode={this.renderNode}
           renderMark={this.renderMark}
         />
       </div>
     )
   }
+
+  onCompositionStart = (ev, change) => {
+    this.isComposing = true
+  }
+
+  onCompositionEnd = (ev, change) => {
+    this.isComposing = false
+    change.insertText(ev.data)
+    this.onChange(change)
+  }
+
+  isComposing = false
 
   /**
    * Render a mark-toggling toolbar button.
@@ -203,6 +217,10 @@ class RichTextExample extends React.Component {
    */
 
   onChange = ({ value }) => {
+    if (this.isComposing) {
+      return
+    }
+
     this.setState({ value })
   }
 
