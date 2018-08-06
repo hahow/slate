@@ -100,6 +100,11 @@ function BeforePlugin() {
       if (el.contains(relatedTarget) && node && !node.isVoid) return true
     }
 
+    // Notice: This is a workaround solution
+    // iOS 上中文輸入法使用者按下 “完成” 後，並不會觸發 onCompositionEnd，只有 onBlur 事件
+    // 因此在這邊手動執行 onCompositionEnd
+    // 但是，這裡並沒有辦法觸發 editor 外接的 onCompositionEnd props
+    this.onCompositionEnd(event, change, editor);
     debug('onBlur', { event })
   }
 
@@ -387,7 +392,10 @@ function BeforePlugin() {
     // typing. However, certain characters also move the selection before
     // we're able to handle it, so prevent their default behavior.
     if (isComposing) {
-      if (Hotkeys.isComposing(event)) event.preventDefault()
+      // Notice: This is a workaround solution
+      // 在 iOS 上使用 IME 組字的狀態下，按下 backspace 後，會因為這邊的 onKeyDown 事件被攔截，造成組字無法刪除的問題
+      // 因此這邊碰到 backspace 鍵的話，特別跳過它
+      if (Hotkeys.isComposing(event) && event.key !== 'Backspace') event.preventDefault()
       return true
     }
 
