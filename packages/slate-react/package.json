@@ -1,7 +1,7 @@
 {
   "name": "slate-react",
   "description": "A set of React components for building completely customizable rich-text editors.",
-  "version": "0.15.1",
+  "version": "0.15.2",
   "license": "MIT",
   "repository": "git://github.com/ianstormtaylor/slate.git",
   "main": "lib/slate-react.js",
@@ -72,5 +72,6 @@
     "text",
     "wysiwyg",
     "wysiwym"
-  ]
+  ],
+  "gitHead": "fa3699b0c6081e544a04eab560a56d4b2be6903f"
 }
