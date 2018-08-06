@@ -1,7 +1,6 @@
 import Block from './models/block'
 import Change from './models/change'
 import Changes from './changes'
-import Character from './models/character'
 import Data from './models/data'
 import Document from './models/document'
 import History from './models/history'
@@ -13,6 +12,7 @@ import Node from './models/node'
 import Operation from './models/operation'
 import Operations from './operations'
 import PathUtils from './utils/path-utils'
+import Point from './models/point'
 import Range from './models/range'
 import Schema from './models/schema'
 import Stack from './models/stack'
@@ -32,7 +32,6 @@ export {
   Block,
   Change,
   Changes,
-  Character,
   Data,
   Document,
   History,
@@ -44,6 +43,7 @@ export {
   Operation,
   Operations,
   PathUtils,
+  Point,
   Range,
   resetKeyGenerator,
   resetMemoization,
@@ -59,7 +59,6 @@ export {
 export default {
   Block,
   Changes,
-  Character,
   Data,
   Document,
   History,
@@ -71,6 +70,7 @@ export default {
   Operation,
   Operations,
   PathUtils,
+  Point,
   Range,
   resetKeyGenerator,
   resetMemoization,
