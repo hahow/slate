@@ -8,19 +8,13 @@ const h = createHyperscript({
     code: 'code',
     list: 'list',
     item: 'item',
-    image: {
-      type: 'image',
-      isVoid: true,
-    },
+    image: 'image',
   },
   inlines: {
     link: 'link',
     hashtag: 'hashtag',
     comment: 'comment',
-    emoji: {
-      type: 'emoji',
-      isVoid: true,
-    },
+    emoji: 'emoji',
   },
   marks: {
     b: 'bold',
@@ -28,8 +22,26 @@ const h = createHyperscript({
     u: 'underline',
     fontSize: 'font-size',
   },
-  decorators: {
+  decorations: {
+    result: 'result',
     highlight: 'highlight',
+  },
+  schema: {
+    blocks: {
+      image: {
+        isVoid: true,
+      },
+    },
+    inlines: {
+      emoji: {
+        isVoid: true,
+      },
+    },
+    marks: {
+      result: {
+        isAtomic: true,
+      },
+    },
   },
 })
 

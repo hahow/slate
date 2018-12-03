@@ -15,7 +15,9 @@ function decorateNode(block) {
         key: text.key,
         offset: 2,
       },
-      marks: [{ type: 'bold' }],
+      mark: {
+        type: 'bold',
+      },
     },
   ]
 }
@@ -24,10 +26,12 @@ function Bold(props) {
   return React.createElement('strong', { ...props.attributes }, props.children)
 }
 
-function renderMark(props) {
+function renderMark(props, editor, next) {
   switch (props.mark.type) {
     case 'bold':
       return Bold(props)
+    default:
+      return next()
   }
 }
 
@@ -48,9 +52,17 @@ export const output = `
 <div data-slate-editor="true" contenteditable="true" role="textbox">
   <div style="position:relative">
     <span>
-      <span>o</span>
-      <span><strong data-slate-leaf="true">n</strong></span>
-      <span>e</span>
+      <span data-slate-leaf="true">
+        <span data-slate-content="true">o</span>
+      </span>
+      <span data-slate-leaf="true">
+        <strong data-slate-mark="true">
+          <span data-slate-content="true">n</span>
+        </strong>
+      </span>
+      <span data-slate-leaf="true">
+        <span data-slate-content="true">e</span>
+      </span>
     </span>
   </div>
 </div>

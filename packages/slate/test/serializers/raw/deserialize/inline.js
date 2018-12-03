@@ -11,7 +11,6 @@ export const input = {
       {
         object: 'block',
         type: 'paragraph',
-        isVoid: false,
         data: {},
         nodes: [
           {
@@ -27,7 +26,6 @@ export const input = {
           {
             object: 'inline',
             type: 'link',
-            isVoid: false,
             data: {},
             nodes: [
               {
@@ -62,7 +60,9 @@ export const output = (
   <value>
     <document>
       <paragraph>
+        <text />
         <link>one</link>
+        <text />
       </paragraph>
     </document>
   </value>

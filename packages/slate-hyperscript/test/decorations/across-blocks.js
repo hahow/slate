@@ -1,12 +1,12 @@
 /** @jsx h */
 
-import { createHyperscript } from '../..'
+import { createHyperscript } from 'slate-hyperscript'
 
 const h = createHyperscript({
   blocks: {
     paragraph: 'paragraph',
   },
-  decorators: {
+  decorations: {
     highlight: 'highlight',
   },
 })
@@ -33,7 +33,6 @@ export const output = {
       {
         object: 'block',
         type: 'paragraph',
-        isVoid: false,
         data: {},
         nodes: [
           {
@@ -51,7 +50,6 @@ export const output = {
       {
         object: 'block',
         type: 'paragraph',
-        isVoid: false,
         data: {},
         nodes: [
           {

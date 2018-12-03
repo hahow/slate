@@ -1,13 +1,8 @@
-/**
- * Dependencies.
- */
-
 import isPlainObject from 'is-plain-object'
-import logger from 'slate-dev-logger'
 import { List, Map, Record } from 'immutable'
 
-import MODEL_TYPES, { isType } from '../constants/model-types'
 import KeyUtils from '../utils/key-utils'
+import Node from './node'
 
 /**
  * Default properties.
@@ -16,10 +11,9 @@ import KeyUtils from '../utils/key-utils'
  */
 
 const DEFAULTS = {
-  data: new Map(),
-  isVoid: false,
+  data: undefined,
   key: undefined,
-  nodes: new List(),
+  nodes: undefined,
   type: undefined,
 }
 
@@ -85,13 +79,7 @@ class Inline extends Record(DEFAULTS) {
       return object
     }
 
-    const {
-      data = {},
-      isVoid = false,
-      key = KeyUtils.create(),
-      nodes = [],
-      type,
-    } = object
+    const { data = {}, key = KeyUtils.create(), nodes = [], type } = object
 
     if (typeof type != 'string') {
       throw new Error('`Inline.fromJS` requires a `type` string.')
@@ -100,28 +88,12 @@ class Inline extends Record(DEFAULTS) {
     const inline = new Inline({
       key,
       type,
-      isVoid: !!isVoid,
       data: new Map(data),
-      nodes: Inline.createChildren(nodes),
+      nodes: Node.createList(nodes),
     })
 
     return inline
   }
-
-  /**
-   * Alias `fromJS`.
-   */
-
-  static fromJS = Inline.fromJSON
-
-  /**
-   * Check if `any` is a `Inline`.
-   *
-   * @param {Any} any
-   * @return {Boolean}
-   */
-
-  static isInline = isType.bind(null, 'INLINE')
 
   /**
    * Check if `any` is a list of inlines.
@@ -135,46 +107,6 @@ class Inline extends Record(DEFAULTS) {
   }
 
   /**
-   * Object.
-   *
-   * @return {String}
-   */
-
-  get object() {
-    return 'inline'
-  }
-
-  get kind() {
-    logger.deprecate(
-      'slate@0.32.0',
-      'The `kind` property of Slate objects has been renamed to `object`.'
-    )
-    return this.object
-  }
-
-  /**
-   * Check if the inline is empty.
-   * Returns true if inline is not void and all it's children nodes are empty.
-   * Void node is never empty, regardless of it's content.
-   *
-   * @return {Boolean}
-   */
-
-  get isEmpty() {
-    return !this.isVoid && !this.nodes.some(child => !child.isEmpty)
-  }
-
-  /**
-   * Get the concatenated text of all the inline's children.
-   *
-   * @return {String}
-   */
-
-  get text() {
-    return this.getText()
-  }
-
-  /**
    * Return a JSON representation of the inline.
    *
    * @param {Object} options
@@ -185,7 +117,6 @@ class Inline extends Record(DEFAULTS) {
     const object = {
       object: this.object,
       type: this.type,
-      isVoid: this.isVoid,
       data: this.data.toJSON(),
       nodes: this.nodes.toArray().map(n => n.toJSON(options)),
     }
@@ -196,21 +127,7 @@ class Inline extends Record(DEFAULTS) {
 
     return object
   }
-
-  /**
-   * Alias `toJS`.
-   */
-
-  toJS(options) {
-    return this.toJSON(options)
-  }
 }
-
-/**
- * Attach a pseudo-symbol for type checking.
- */
-
-Inline.prototype[MODEL_TYPES.INLINE] = true
 
 /**
  * Export.

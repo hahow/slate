@@ -24,7 +24,6 @@ export const output = {
         type: 'paragraph',
         key: '1',
         data: {},
-        isVoid: false,
         nodes: [
           {
             object: 'text',
@@ -42,7 +41,7 @@ export const output = {
     ],
   },
   selection: {
-    object: 'range',
+    object: 'selection',
     anchor: {
       object: 'point',
       key: '0',
@@ -57,7 +56,6 @@ export const output = {
     },
     isFocused: false,
     marks: null,
-    isAtomic: false,
   },
 }
 

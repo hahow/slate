@@ -2,7 +2,7 @@
 
 import { Set } from 'immutable'
 import h from '../../../../helpers/h'
-import { Mark } from '../../../../..'
+import { Mark } from 'slate'
 
 export const input = (
   <text>
@@ -11,7 +11,7 @@ export const input = (
       <i> is</i> Cute
     </b>
   </text>
-)[0]
+)
 
 export default function(t) {
   return t.getActiveMarksBetweenOffsets(0, 6)

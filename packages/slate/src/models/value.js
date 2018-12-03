@@ -1,15 +1,11 @@
 import isPlainObject from 'is-plain-object'
-import logger from 'slate-dev-logger'
-import { Record, Set, List, Map } from 'immutable'
+import invariant from 'tiny-invariant'
+import { Record, Set, List } from 'immutable'
 
-import MODEL_TYPES from '../constants/model-types'
 import PathUtils from '../utils/path-utils'
-import Change from './change'
 import Data from './data'
+import Decoration from './decoration'
 import Document from './document'
-import History from './history'
-import Range from './range'
-import Schema from './schema'
 
 /**
  * Default properties.
@@ -18,12 +14,10 @@ import Schema from './schema'
  */
 
 const DEFAULTS = {
-  data: new Map(),
-  decorations: null,
-  document: Document.create(),
-  history: History.create(),
-  schema: Schema.create(),
-  selection: Range.create(),
+  data: undefined,
+  decorations: undefined,
+  document: undefined,
+  selection: undefined,
 }
 
 /**
@@ -67,15 +61,14 @@ class Value extends Record(DEFAULTS) {
       return {
         data: a.data,
         decorations: a.decorations,
-        schema: a.schema,
       }
     }
 
     if (isPlainObject(a)) {
       const p = {}
       if ('data' in a) p.data = Data.create(a.data)
-      if ('decorations' in a) p.decorations = Range.createList(a.decorations)
-      if ('schema' in a) p.schema = Schema.create(a.schema)
+      if ('decorations' in a)
+        p.decorations = Decoration.createList(a.decorations)
       return p
     }
 
@@ -95,123 +88,26 @@ class Value extends Record(DEFAULTS) {
    */
 
   static fromJSON(object, options = {}) {
-    let { document = {}, selection = {}, schema = {}, history = {} } = object
-    let data = new Map()
+    let { data = {}, decorations = [], document = {}, selection = {} } = object
+    data = Data.fromJSON(data)
     document = Document.fromJSON(document)
-    selection = Range.fromJSON(selection)
-    schema = Schema.fromJSON(schema)
-    history = History.fromJSON(history)
-
-    // Allow plugins to set a default value for `data`.
-    if (options.plugins) {
-      for (const plugin of options.plugins) {
-        if (plugin.data) data = data.merge(plugin.data)
-      }
-    }
-
-    // Then merge in the `data` provided.
-    if ('data' in object) {
-      data = data.merge(object.data)
-    }
-
-    selection = document.createRange(selection)
+    selection = document.createSelection(selection)
+    decorations = List(decorations.map(d => Decoration.fromJSON(d)))
 
     if (selection.isUnset) {
       const text = document.getFirstText()
       if (text) selection = selection.moveToStartOfNode(text)
-      selection = document.createRange(selection)
+      selection = document.createSelection(selection)
     }
 
-    selection = document.createRange(selection)
-
-    let value = new Value({
+    const value = new Value({
       data,
+      decorations,
       document,
       selection,
-      schema,
-      history,
     })
 
-    if (options.normalize !== false) {
-      value = value.change({ save: false }).normalize().value
-    }
-
     return value
-  }
-
-  /**
-   * Alias `fromJS`.
-   */
-
-  static fromJS = Value.fromJSON
-
-  /**
-   * Check if a `value` is a `Value`.
-   *
-   * @param {Any} value
-   * @return {Boolean}
-   */
-
-  static isValue(value) {
-    return !!(value && value[MODEL_TYPES.VALUE])
-  }
-
-  /**
-   * Object.
-   *
-   * @return {String}
-   */
-
-  get object() {
-    return 'value'
-  }
-
-  get kind() {
-    logger.deprecate(
-      'slate@0.32.0',
-      'The `kind` property of Slate objects has been renamed to `object`.'
-    )
-    return this.object
-  }
-
-  /**
-   * Are there undoable events?
-   *
-   * @return {Boolean}
-   */
-
-  get hasUndos() {
-    return this.history.undos.size > 0
-  }
-
-  /**
-   * Are there redoable events?
-   *
-   * @return {Boolean}
-   */
-
-  get hasRedos() {
-    return this.history.redos.size > 0
-  }
-
-  /**
-   * Is the current selection blurred?
-   *
-   * @return {Boolean}
-   */
-
-  get isBlurred() {
-    return this.selection.isBlurred
-  }
-
-  /**
-   * Is the current selection focused?
-   *
-   * @return {Boolean}
-   */
-
-  get isFocused() {
-    return this.selection.isFocused
   }
 
   /**
@@ -482,7 +378,7 @@ class Value extends Record(DEFAULTS) {
   get blocks() {
     return this.selection.isUnset
       ? new List()
-      : this.document.getBlocksAtRange(this.selection)
+      : this.document.getLeafBlocksAtRange(this.selection)
   }
 
   /**
@@ -498,7 +394,7 @@ class Value extends Record(DEFAULTS) {
   }
 
   /**
-   * Get the inline nodes in the current selection.
+   * Get the bottom-most inline nodes in the current selection.
    *
    * @return {List<Inline>}
    */
@@ -506,7 +402,7 @@ class Value extends Record(DEFAULTS) {
   get inlines() {
     return this.selection.isUnset
       ? new List()
-      : this.document.getInlinesAtRange(this.selection)
+      : this.document.getLeafInlinesAtRange(this.selection)
   }
 
   /**
@@ -519,41 +415,6 @@ class Value extends Record(DEFAULTS) {
     return this.selection.isUnset
       ? new List()
       : this.document.getTextsAtRange(this.selection)
-  }
-
-  /**
-   * Check whether the selection is empty.
-   *
-   * @return {Boolean}
-   */
-
-  get isEmpty() {
-    if (this.selection.isCollapsed) return true
-    if (this.selection.end.offset != 0 && this.selection.start.offset != 0)
-      return false
-    return this.fragment.isEmpty
-  }
-
-  /**
-   * Check whether the selection is collapsed in a void node.
-   *
-   * @return {Boolean}
-   */
-
-  get isInVoid() {
-    if (this.selection.isExpanded) return false
-    return this.document.hasVoidParent(this.selection.start.key)
-  }
-
-  /**
-   * Create a new `Change` with the current value as a starting point.
-   *
-   * @param {Object} attrs
-   * @return {Change}
-   */
-
-  change(attrs = {}) {
-    return new Change({ ...attrs, value: this })
   }
 
   /**
@@ -588,12 +449,9 @@ class Value extends Record(DEFAULTS) {
     document = document.insertNode(path, node)
     value = value.set('document', document)
 
-    value = value.mapRanges(range => {
-      return range.setPoints([
-        range.anchor.setPath(null),
-        range.focus.setPath(null),
-      ])
-    })
+    value = value.mapRanges(range =>
+      range.updatePoints(point => point.setPath(null))
+    )
 
     return value
   }
@@ -611,35 +469,18 @@ class Value extends Record(DEFAULTS) {
   insertText(path, offset, text, marks) {
     let value = this
     let { document } = value
+    const node = document.assertNode(path)
     document = document.insertText(path, offset, text, marks)
     value = value.set('document', document)
 
-    // Update any ranges that were affected.
-    const node = document.assertNode(path)
-
     value = value.mapRanges(range => {
-      const { anchor, focus, isBackward, isAtomic } = range
-
-      if (
-        anchor.key === node.key &&
-        (anchor.offset > offset ||
-          (anchor.offset === offset && (!isAtomic || !isBackward)))
-      ) {
-        range = range.moveAnchorForward(text.length)
-      }
-
-      if (
-        focus.key === node.key &&
-        (focus.offset > offset ||
-          (focus.offset == offset && (!isAtomic || isBackward)))
-      ) {
-        range = range.moveFocusForward(text.length)
-      }
-
-      return range
+      return range.updatePoints(point => {
+        return point.key === node.key && point.offset >= offset
+          ? point.setOffset(point.offset + text.length)
+          : point
+      })
     })
 
-    value = value.clearAtomicRanges(node.key, offset)
     return value
   }
 
@@ -673,10 +514,7 @@ class Value extends Record(DEFAULTS) {
         }
       }
 
-      range = range.setPoints([
-        range.anchor.setPath(null),
-        range.focus.setPath(null),
-      ])
+      range = range.updatePoints(point => point.setPath(null))
 
       return range
     })
@@ -702,12 +540,9 @@ class Value extends Record(DEFAULTS) {
     document = document.moveNode(path, newPath, newIndex)
     value = value.set('document', document)
 
-    value = value.mapRanges(range => {
-      return range.setPoints([
-        range.anchor.setPath(null),
-        range.focus.setPath(null),
-      ])
-    })
+    value = value.mapRanges(range =>
+      range.updatePoints(point => point.setPath(null))
+    )
 
     return value
   }
@@ -755,19 +590,16 @@ class Value extends Record(DEFAULTS) {
       if (node.hasNode(start.key)) {
         range = prev
           ? range.moveStartTo(prev.key, prev.text.length)
-          : next ? range.moveStartTo(next.key, 0) : Range.create()
+          : next ? range.moveStartTo(next.key, 0) : range.unset()
       }
 
       if (node.hasNode(end.key)) {
         range = prev
           ? range.moveEndTo(prev.key, prev.text.length)
-          : next ? range.moveEndTo(next.key, 0) : Range.create()
+          : next ? range.moveEndTo(next.key, 0) : range.unset()
       }
 
-      range = range.setPoints([
-        range.anchor.setPath(null),
-        range.focus.setPath(null),
-      ])
+      range = range.updatePoints(point => point.setPath(null))
 
       return range
     })
@@ -787,36 +619,30 @@ class Value extends Record(DEFAULTS) {
   removeText(path, offset, text) {
     let value = this
     let { document } = value
+    const node = document.assertNode(path)
     document = document.removeText(path, offset, text)
     value = value.set('document', document)
 
-    const node = document.assertNode(path)
     const { length } = text
-    const rangeOffset = offset + length
-    value = value.clearAtomicRanges(node.key, offset, offset + length)
+    const start = offset
+    const end = offset + length
 
     value = value.mapRanges(range => {
-      const { anchor, focus } = range
+      return range.updatePoints(point => {
+        if (point.key !== node.key) {
+          return point
+        }
 
-      if (anchor.key === node.key) {
-        range =
-          anchor.offset >= rangeOffset
-            ? range.moveAnchorBackward(length)
-            : anchor.offset > offset
-              ? range.moveAnchorTo(anchor.key, offset)
-              : range
-      }
+        if (point.offset >= end) {
+          return point.setOffset(point.offset - length)
+        }
 
-      if (focus.key === node.key) {
-        range =
-          focus.offset >= rangeOffset
-            ? range.moveFocusBackward(length)
-            : focus.offset > offset
-              ? range.moveFocusTo(focus.key, offset)
-              : range
-      }
+        if (point.offset > start) {
+          return point.setOffset(start)
+        }
 
-      return range
+        return point
+      })
     })
 
     return value
@@ -858,6 +684,33 @@ class Value extends Record(DEFAULTS) {
   }
 
   /**
+   * Set `properties` on the value.
+   *
+   * @param {Object} properties
+   * @return {Value}
+   */
+
+  setProperties(properties) {
+    let value = this
+    const { document } = value
+    const { data, decorations } = properties
+    const props = {}
+
+    if (data) {
+      props.data = data
+    }
+
+    if (decorations) {
+      props.decorations = decorations.map(d => {
+        return d.isSet ? d : document.resolveDecoration(d)
+      })
+    }
+
+    value = value.merge(props)
+    return value
+  }
+
+  /**
    * Set `properties` on the selection.
    *
    * @param {Value} value
@@ -869,7 +722,7 @@ class Value extends Record(DEFAULTS) {
     let value = this
     let { document, selection } = value
     const next = selection.setProperties(properties)
-    selection = document.resolveRange(next)
+    selection = document.resolveSelection(next)
     value = value.set('selection', selection)
     return value
   }
@@ -905,10 +758,7 @@ class Value extends Record(DEFAULTS) {
         range = range.moveEndTo(next.key, end.offset - position)
       }
 
-      range = range.setPoints([
-        range.anchor.setPath(null),
-        range.focus.setPath(null),
-      ])
+      range = range.updatePoints(point => point.setPath(null))
 
       return range
     })
@@ -927,57 +777,20 @@ class Value extends Record(DEFAULTS) {
     let value = this
     const { document, selection, decorations } = value
 
-    if (selection) {
-      let next = selection.isSet ? iterator(selection) : selection
-      if (!next) next = Range.create()
-      if (next !== selection) next = document.createRange(next)
-      value = value.set('selection', next)
-    }
+    let sel = selection.isSet ? iterator(selection) : selection
+    if (!sel) sel = selection.unset()
+    if (sel !== selection) sel = document.createSelection(sel)
+    value = value.set('selection', sel)
 
-    if (decorations) {
-      let next = decorations.map(decoration => {
-        let n = decoration.isSet ? iterator(decoration) : decoration
-        if (n && n !== decoration) n = document.createRange(n)
-        return n
-      })
-
-      next = next.filter(decoration => !!decoration)
-      next = next.size ? next : null
-      value = value.set('decorations', next)
-    }
-
-    return value
-  }
-
-  /**
-   * Remove any atomic ranges inside a `key`, `offset` and `length`.
-   *
-   * @param {String} key
-   * @param {Number} from
-   * @param {Number?} to
-   * @return {Value}
-   */
-
-  clearAtomicRanges(key, from, to = null) {
-    return this.mapRanges(range => {
-      const { isAtomic, start, end } = range
-      if (!isAtomic) return range
-      if (start.key !== key) return range
-
-      if (start.offset < from && (end.key !== key || end.offset > from)) {
-        return null
-      }
-
-      if (
-        to != null &&
-        start.offset < to &&
-        (end.key !== key || end.offset > to)
-      ) {
-        return null
-      }
-
-      return range
+    let decs = decorations.map(decoration => {
+      let n = decoration.isSet ? iterator(decoration) : decoration
+      if (n && n !== decoration) n = document.createDecoration(n)
+      return n
     })
+
+    decs = decs.filter(decoration => !!decoration)
+    value = value.set('decorations', decs)
+    return value
   }
 
   /**
@@ -999,187 +812,35 @@ class Value extends Record(DEFAULTS) {
 
     if (options.preserveDecorations) {
       object.decorations = this.decorations
-        ? this.decorations.toArray().map(d => d.toJSON(options))
-        : null
-    }
-
-    if (options.preserveHistory) {
-      object.history = this.history.toJSON(options)
+        .toArray()
+        .map(d => d.toJSON(options))
     }
 
     if (options.preserveSelection) {
       object.selection = this.selection.toJSON(options)
     }
 
-    if (options.preserveSchema) {
-      object.schema = this.schema.toJSON(options)
-    }
-
     return object
-  }
-
-  /**
-   * Alias `toJS`.
-   */
-
-  toJS(options) {
-    return this.toJSON(options)
   }
 
   /**
    * Deprecated.
    */
 
-  get isCollapsed() {
-    logger.deprecate(
-      '0.37.0',
-      'The `value.isCollapsed` property is deprecated, please use `selection.isCollapsed` instead.'
+  get history() {
+    invariant(
+      false,
+      'As of Slate 0.42.0, the `value.history` model no longer exists, and the history is stored in `value.data` instead using plugins.'
     )
-
-    return this.selection.isCollapsed
   }
 
-  get isExpanded() {
-    logger.deprecate(
-      '0.37.0',
-      'The `value.isExpanded` property is deprecated, please use `selection.isExpanded` instead.'
+  change() {
+    invariant(
+      false,
+      'As of Slate 0.42.0, value object are no longer schema-aware, and the `value.change()` method is no longer available. Use the `editor.change()` method on the new `Editor` controller instead.'
     )
-
-    return this.selection.isExpanded
-  }
-
-  get isBackward() {
-    logger.deprecate(
-      '0.37.0',
-      'The `value.isBackward` property is deprecated, please use `selection.isBackward` instead.'
-    )
-
-    return this.selection.isBackward
-  }
-
-  get isForward() {
-    logger.deprecate(
-      '0.37.0',
-      'The `value.isForward` property is deprecated, please use `selection.isForward` instead.'
-    )
-
-    return this.selection.isForward
-  }
-
-  get startKey() {
-    logger.deprecate(
-      '0.37.0',
-      'The `value.startKey` property is deprecated, please use `selection.start.key` instead.'
-    )
-
-    return this.selection.start.key
-  }
-
-  get endKey() {
-    logger.deprecate(
-      '0.37.0',
-      'The `value.endKey` property is deprecated, please use `selection.end.key` instead.'
-    )
-
-    return this.selection.end.key
-  }
-
-  get startPath() {
-    logger.deprecate(
-      '0.37.0',
-      'The `value.startPath` property is deprecated, please use `selection.start.path` instead.'
-    )
-
-    return this.selection.start.path
-  }
-
-  get endPath() {
-    logger.deprecate(
-      '0.37.0',
-      'The `value.endPath` property is deprecated, please use `selection.end.path` instead.'
-    )
-
-    return this.selection.end.path
-  }
-
-  get startOffset() {
-    logger.deprecate(
-      '0.37.0',
-      'The `value.startOffset` property is deprecated, please use `selection.start.offset` instead.'
-    )
-
-    return this.selection.start.offset
-  }
-
-  get endOffset() {
-    logger.deprecate(
-      '0.37.0',
-      'The `value.endOffset` property is deprecated, please use `selection.end.offset` instead.'
-    )
-
-    return this.selection.end.offset
-  }
-
-  get anchorKey() {
-    logger.deprecate(
-      '0.37.0',
-      'The `value.anchorKey` property is deprecated, please use `selection.anchor.key` instead.'
-    )
-
-    return this.selection.anchor.key
-  }
-
-  get focusKey() {
-    logger.deprecate(
-      '0.37.0',
-      'The `value.focusKey` property is deprecated, please use `selection.focus.key` instead.'
-    )
-
-    return this.selection.focus.key
-  }
-
-  get anchorPath() {
-    logger.deprecate(
-      '0.37.0',
-      'The `value.anchorPath` property is deprecated, please use `selection.anchor.path` instead.'
-    )
-
-    return this.selection.anchor.path
-  }
-
-  get focusPath() {
-    logger.deprecate(
-      '0.37.0',
-      'The `value.focusPath` property is deprecated, please use `selection.focus.path` instead.'
-    )
-
-    return this.selection.focus.path
-  }
-
-  get anchorOffset() {
-    logger.deprecate(
-      '0.37.0',
-      'The `value.anchorOffset` property is deprecated, please use `selection.anchor.offset` instead.'
-    )
-
-    return this.selection.anchor.offset
-  }
-
-  get focusOffset() {
-    logger.deprecate(
-      '0.37.0',
-      'The `value.focusOffset` property is deprecated, please use `selection.focus.offset` instead.'
-    )
-
-    return this.selection.focus.offset
   }
 }
-
-/**
- * Attach a pseudo-symbol for type checking.
- */
-
-Value.prototype[MODEL_TYPES.VALUE] = true
 
 /**
  * Export.

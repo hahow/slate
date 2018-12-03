@@ -1,6 +1,5 @@
 /** @jsx h */
 
-import { CHILD_TYPE_INVALID } from 'slate-schema-violations'
 import h from '../../helpers/h'
 
 export const schema = {
@@ -12,9 +11,9 @@ export const schema = {
           match: [{ type: 'paragraph' }],
         },
       ],
-      normalize: (change, { code, child }) => {
-        if (code == CHILD_TYPE_INVALID) {
-          change.wrapBlockByKey(child.key, 'paragraph')
+      normalize: (editor, { code, child }) => {
+        if (code == 'child_type_invalid') {
+          editor.wrapBlockByKey(child.key, 'paragraph')
         }
       },
     },
@@ -25,7 +24,9 @@ export const input = (
   <value>
     <document>
       <quote>
-        <image />
+        <image>
+          <text />
+        </image>
       </quote>
     </document>
   </value>
@@ -36,7 +37,9 @@ export const output = (
     <document>
       <quote>
         <paragraph>
-          <image />
+          <image>
+            <text />
+          </image>
         </paragraph>
       </quote>
     </document>

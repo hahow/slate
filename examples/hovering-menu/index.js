@@ -63,7 +63,8 @@ class HoverMenu extends React.Component {
    */
 
   renderMarkButton(type, icon) {
-    const { value } = this.props
+    const { editor } = this.props
+    const { value } = editor
     const isActive = value.activeMarks.some(mark => mark.type == type)
     return (
       <Button
@@ -84,10 +85,9 @@ class HoverMenu extends React.Component {
    */
 
   onClickMark(event, type) {
-    const { value, onChange } = this.props
+    const { editor } = this.props
     event.preventDefault()
-    const change = value.change().toggleMark(type)
-    onChange(change)
+    editor.toggleMark(type)
   }
 }
 
@@ -125,17 +125,19 @@ class HoveringMenu extends React.Component {
    */
 
   updateMenu = () => {
-    const { value } = this.state
     const menu = this.menu
     if (!menu) return
 
-    if (value.isBlurred || value.isEmpty) {
+    const { value } = this.state
+    const { fragment, selection } = value
+
+    if (selection.isBlurred || selection.isCollapsed || fragment.text === '') {
       menu.removeAttribute('style')
       return
     }
 
-    const selection = window.getSelection()
-    const range = selection.getRangeAt(0)
+    const native = window.getSelection()
+    const range = native.getRangeAt(0)
     const rect = range.getBoundingClientRect()
     menu.style.opacity = 1
     menu.style.top = `${rect.top + window.pageYOffset - menu.offsetHeight}px`
@@ -155,15 +157,11 @@ class HoveringMenu extends React.Component {
   render() {
     return (
       <div>
-        <HoverMenu
-          innerRef={menu => (this.menu = menu)}
-          value={this.state.value}
-          onChange={this.onChange}
-        />
         <Editor
           placeholder="Enter some text..."
           value={this.state.value}
           onChange={this.onChange}
+          renderEditor={this.renderEditor}
           renderMark={this.renderMark}
         />
       </div>
@@ -171,13 +169,33 @@ class HoveringMenu extends React.Component {
   }
 
   /**
-   * Render a Slate mark.
+   * Render the editor.
    *
    * @param {Object} props
+   * @param {Function} next
    * @return {Element}
    */
 
-  renderMark = props => {
+  renderEditor = (props, editor, next) => {
+    const children = next()
+    return (
+      <React.Fragment>
+        {children}
+        <HoverMenu innerRef={menu => (this.menu = menu)} editor={editor} />
+      </React.Fragment>
+    )
+  }
+
+  /**
+   * Render a Slate mark.
+   *
+   * @param {Object} props
+   * @param {Editor} editor
+   * @param {Function} next
+   * @return {Element}
+   */
+
+  renderMark = (props, editor, next) => {
     const { children, mark, attributes } = props
 
     switch (mark.type) {
@@ -189,13 +207,15 @@ class HoveringMenu extends React.Component {
         return <em {...attributes}>{children}</em>
       case 'underlined':
         return <u {...attributes}>{children}</u>
+      default:
+        return next()
     }
   }
 
   /**
    * On change.
    *
-   * @param {Change} change
+   * @param {Editor} editor
    */
 
   onChange = ({ value }) => {

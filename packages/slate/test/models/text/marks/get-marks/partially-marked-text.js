@@ -2,7 +2,7 @@
 
 import { Set } from 'immutable'
 import h from '../../../../helpers/h'
-import { Mark } from '../../../../..'
+import { Mark } from 'slate'
 
 export const input = (
   <text>
@@ -10,7 +10,7 @@ export const input = (
     is
     <i>Cute</i>
   </text>
-)[0]
+)
 
 export default function(t) {
   return t.getMarks()

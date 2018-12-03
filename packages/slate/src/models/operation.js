@@ -1,13 +1,13 @@
 import isPlainObject from 'is-plain-object'
-import logger from 'slate-dev-logger'
-import { List, Record } from 'immutable'
+import { List, Record, Map } from 'immutable'
 
-import MODEL_TYPES from '../constants/model-types'
 import Mark from './mark'
 import Node from './node'
 import PathUtils from '../utils/path-utils'
-import Range from './range'
+import Selection from './selection'
 import Value from './value'
+import apply from '../operations/apply'
+import invert from '../operations/invert'
 
 /**
  * Operation attributes.
@@ -16,19 +16,19 @@ import Value from './value'
  */
 
 const OPERATION_ATTRIBUTES = {
-  add_mark: ['value', 'path', 'offset', 'length', 'mark'],
-  insert_node: ['value', 'path', 'node'],
-  insert_text: ['value', 'path', 'offset', 'text', 'marks'],
-  merge_node: ['value', 'path', 'position', 'properties', 'target'],
-  move_node: ['value', 'path', 'newPath'],
-  remove_mark: ['value', 'path', 'offset', 'length', 'mark'],
-  remove_node: ['value', 'path', 'node'],
-  remove_text: ['value', 'path', 'offset', 'text', 'marks'],
-  set_mark: ['value', 'path', 'offset', 'length', 'mark', 'properties'],
-  set_node: ['value', 'path', 'node', 'properties'],
-  set_selection: ['value', 'selection', 'properties'],
-  set_value: ['value', 'properties'],
-  split_node: ['value', 'path', 'position', 'properties', 'target'],
+  add_mark: ['value', 'path', 'offset', 'length', 'mark', 'data'],
+  insert_node: ['value', 'path', 'node', 'data'],
+  insert_text: ['value', 'path', 'offset', 'text', 'marks', 'data'],
+  merge_node: ['value', 'path', 'position', 'properties', 'target', 'data'],
+  move_node: ['value', 'path', 'newPath', 'data'],
+  remove_mark: ['value', 'path', 'offset', 'length', 'mark', 'data'],
+  remove_node: ['value', 'path', 'node', 'data'],
+  remove_text: ['value', 'path', 'offset', 'text', 'marks', 'data'],
+  set_mark: ['value', 'path', 'offset', 'length', 'mark', 'properties', 'data'],
+  set_node: ['value', 'path', 'node', 'properties', 'data'],
+  set_selection: ['value', 'selection', 'properties', 'data'],
+  set_value: ['value', 'properties', 'data'],
+  split_node: ['value', 'path', 'position', 'properties', 'target', 'data'],
 }
 
 /**
@@ -52,6 +52,7 @@ const DEFAULTS = {
   text: undefined,
   type: undefined,
   value: undefined,
+  data: undefined,
 }
 
 /**
@@ -125,6 +126,11 @@ class Operation extends Record(DEFAULTS) {
     for (const key of ATTRIBUTES) {
       let v = object[key]
 
+      // Default `data` to an empty object.
+      if (key === 'data' && v === undefined) {
+        v = {}
+      }
+
       if (v === undefined) {
         // Skip keys for objects that should not be serialized, and are only used
         // for providing the local-only invert behavior for the history stack.
@@ -155,7 +161,7 @@ class Operation extends Record(DEFAULTS) {
       }
 
       if (key === 'selection') {
-        v = Range.create(v)
+        v = Selection.create(v)
       }
 
       if (key === 'value') {
@@ -175,7 +181,7 @@ class Operation extends Record(DEFAULTS) {
       }
 
       if (key === 'properties' && type === 'set_selection') {
-        v = Range.createProperties(v)
+        v = Selection.createProperties(v)
       }
 
       if (key === 'properties' && type === 'set_value') {
@@ -186,28 +192,15 @@ class Operation extends Record(DEFAULTS) {
         v = Node.createProperties(v)
       }
 
+      if (key === 'data') {
+        v = Map(v)
+      }
+
       attrs[key] = v
     }
 
     const node = new Operation(attrs)
     return node
-  }
-
-  /**
-   * Alias `fromJS`.
-   */
-
-  static fromJS = Operation.fromJSON
-
-  /**
-   * Check if `any` is a `Operation`.
-   *
-   * @param {Any} any
-   * @return {Boolean}
-   */
-
-  static isOperation(any) {
-    return !!(any && any[MODEL_TYPES.OPERATION])
   }
 
   /**
@@ -222,21 +215,26 @@ class Operation extends Record(DEFAULTS) {
   }
 
   /**
-   * Object.
+   * Apply the operation to a `value`.
    *
-   * @return {String}
+   * @param {Value} value
+   * @return {Value}
    */
 
-  get object() {
-    return 'operation'
+  apply(value) {
+    const next = apply(value, this)
+    return next
   }
 
-  get kind() {
-    logger.deprecate(
-      'slate@0.32.0',
-      'The `kind` property of Slate objects has been renamed to `object`.'
-    )
-    return this.object
+  /**
+   * Invert the operation.
+   *
+   * @return {Operation}
+   */
+
+  invert() {
+    const inverted = invert(this)
+    return inverted
   }
 
   /**
@@ -261,7 +259,13 @@ class Operation extends Record(DEFAULTS) {
       if (key == 'value') continue
       if (key == 'node' && type != 'insert_node') continue
 
-      if (key == 'mark' || key == 'marks' || key == 'node') {
+      if (
+        key == 'mark' ||
+        key == 'marks' ||
+        key == 'node' ||
+        key == 'path' ||
+        key == 'newPath'
+      ) {
         value = value.toJSON()
       }
 
@@ -282,7 +286,6 @@ class Operation extends Record(DEFAULTS) {
       if (key == 'properties' && type == 'set_node') {
         const v = {}
         if ('data' in value) v.data = value.data.toJS()
-        if ('isVoid' in value) v.isVoid = value.isVoid
         if ('type' in value) v.type = value.type
         value = v
       }
@@ -300,7 +303,6 @@ class Operation extends Record(DEFAULTS) {
         const v = {}
         if ('data' in value) v.data = value.data.toJS()
         if ('decorations' in value) v.decorations = value.decorations.toJS()
-        if ('schema' in value) v.schema = value.schema.toJS()
         value = v
       }
 
@@ -311,26 +313,16 @@ class Operation extends Record(DEFAULTS) {
         value = v
       }
 
+      if (key === 'data') {
+        value = value.toJSON()
+      }
+
       json[key] = value
     }
 
     return json
   }
-
-  /**
-   * Alias `toJS`.
-   */
-
-  toJS(options) {
-    return this.toJSON(options)
-  }
 }
-
-/**
- * Attach a pseudo-symbol for type checking.
- */
-
-Operation.prototype[MODEL_TYPES.OPERATION] = true
 
 /**
  * Export.

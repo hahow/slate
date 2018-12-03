@@ -1,6 +1,7 @@
 import Debug from 'debug'
 
 import Operation from '../models/operation'
+import PathUtils from '../utils/path-utils'
 
 /**
  * Debug.
@@ -50,6 +51,11 @@ function applyOperation(value, op) {
 
     case 'move_node': {
       const { path, newPath } = op
+
+      if (PathUtils.isEqual(path, newPath)) {
+        return value
+      }
+
       const next = value.moveNode(path, newPath)
       return next
     }
@@ -92,7 +98,7 @@ function applyOperation(value, op) {
 
     case 'set_value': {
       const { properties } = op
-      const next = value.merge(properties)
+      const next = value.setProperties(properties)
       return next
     }
 

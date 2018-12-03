@@ -1,12 +1,12 @@
 /** @jsx h */
 
-import h from '../..'
+import h from 'slate-hyperscript'
 
 export const input = (
   <value>
     <document>
       <block type="paragraph">
-        one<text key="a">two</text>three
+        <text key="a">two</text>
       </block>
     </document>
     <selection>
@@ -25,14 +25,13 @@ export const output = {
   object: 'value',
   document: {
     object: 'document',
-    key: '2',
+    key: '1',
     data: {},
     nodes: [
       {
         object: 'block',
         key: '0',
         type: 'paragraph',
-        isVoid: false,
         data: {},
         nodes: [
           {
@@ -41,7 +40,7 @@ export const output = {
             leaves: [
               {
                 object: 'leaf',
-                text: 'onetwothree',
+                text: 'two',
                 marks: [],
               },
             ],
@@ -51,7 +50,7 @@ export const output = {
     ],
   },
   selection: {
-    object: 'range',
+    object: 'selection',
     anchor: {
       object: 'point',
       key: 'a',
@@ -65,7 +64,6 @@ export const output = {
       offset: 2,
     },
     isFocused: false,
-    isAtomic: false,
     marks: null,
   },
 }

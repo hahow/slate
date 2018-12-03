@@ -1,6 +1,6 @@
 /** @jsx h */
 
-import { createHyperscript } from '../..'
+import { createHyperscript } from 'slate-hyperscript'
 
 const h = createHyperscript({
   blocks: {
@@ -27,14 +27,13 @@ export const output = {
   object: 'value',
   document: {
     object: 'document',
-    key: '3',
+    key: '2',
     data: {},
     nodes: [
       {
         object: 'block',
         key: '1',
         type: 'paragraph',
-        isVoid: false,
         data: {},
         nodes: [
           {
@@ -53,7 +52,7 @@ export const output = {
     ],
   },
   selection: {
-    object: 'range',
+    object: 'selection',
     anchor: {
       object: 'point',
       key: '0',
@@ -67,7 +66,6 @@ export const output = {
       offset: 1,
     },
     isFocused: true,
-    isAtomic: false,
     marks: null,
   },
 }

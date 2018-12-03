@@ -2,7 +2,7 @@ import Debug from 'debug'
 import ImmutableTypes from 'react-immutable-proptypes'
 import React from 'react'
 import SlateTypes from 'slate-prop-types'
-import logger from 'slate-dev-logger'
+import warning from 'tiny-warning'
 import Types from 'prop-types'
 
 import Void from './void'
@@ -62,10 +62,10 @@ class Node extends React.Component {
    * @return {Boolean}
    */
 
-  shouldComponentUpdate = nextProps => {
+  shouldComponentUpdate(nextProps) {
     const { props } = this
-    const { stack } = props.editor
-    const shouldUpdate = stack.find(
+    const { editor } = props
+    const shouldUpdate = editor.run(
       'shouldNodeComponentUpdate',
       props,
       nextProps
@@ -81,11 +81,10 @@ class Node extends React.Component {
         return true
       }
 
-      if (shouldUpdate === false) {
-        logger.warn(
-          "Returning false in `shouldNodeComponentUpdate` does not disable Slate's internal `shouldComponentUpdate` logic. If you want to prevent updates, use React's `shouldComponentUpdate` instead."
-        )
-      }
+      warning(
+        shouldUpdate !== false,
+        "Returning false in `shouldNodeComponentUpdate` does not disable Slate's internal `shouldComponentUpdate` logic. If you want to prevent updates, use React's `shouldComponentUpdate` instead."
+      )
     }
 
     // If the `readOnly` status has changed, re-render in case there is any
@@ -132,12 +131,10 @@ class Node extends React.Component {
     } = this.props
     const { value } = editor
     const { selection } = value
-    const { stack } = editor
     const indexes = node.getSelectionIndexes(selection, isSelected)
-    const decs = decorations.concat(node.getDecorations(stack))
+    const decs = decorations.concat(node.getDecorations(editor))
     const childrenDecorations = getChildrenDecorations(node, decs)
-
-    let children = []
+    const children = []
 
     node.nodes.forEach((child, i) => {
       const isChildSelected = !!indexes && indexes.start <= i && i < indexes.end
@@ -153,7 +150,7 @@ class Node extends React.Component {
 
     // If it's a block node with inline children, add the proper `dir` attribute
     // for text direction.
-    if (node.object == 'block' && node.nodes.first().object != 'block') {
+    if (node.isLeafBlock()) {
       const direction = node.getTextDirection()
       if (direction == 'rtl') attributes.dir = 'rtl'
     }
@@ -168,23 +165,17 @@ class Node extends React.Component {
       readOnly,
     }
 
-    let placeholder = stack.find('renderPlaceholder', props)
-
-    if (placeholder) {
-      placeholder = React.cloneElement(placeholder, {
-        key: `${node.key}-placeholder`,
-      })
-
-      children = [placeholder, ...children]
-    }
-
-    const element = stack.find('renderNode', {
+    const element = editor.run('renderNode', {
       ...props,
       attributes,
       children,
     })
 
-    return node.isVoid ? <Void {...this.props}>{element}</Void> : element
+    return editor.query('isVoid', node) ? (
+      <Void {...this.props}>{element}</Void>
+    ) : (
+      element
+    )
   }
 
   /**

@@ -1,13 +1,13 @@
 /** @jsx h */
 
-import { createHyperscript } from '../..'
+import { createHyperscript } from 'slate-hyperscript'
 
 const h = createHyperscript({
   blocks: {
     ul: 'ul',
     li: 'li',
   },
-  decorators: {
+  decorations: {
     highlight: 'highlight',
   },
 })
@@ -36,13 +36,11 @@ export const output = {
       {
         object: 'block',
         type: 'ul',
-        isVoid: false,
         data: {},
         nodes: [
           {
             object: 'block',
             type: 'li',
-            isVoid: false,
             data: {},
             nodes: [
               {
@@ -60,7 +58,6 @@ export const output = {
           {
             object: 'block',
             type: 'li',
-            isVoid: false,
             data: {},
             nodes: [
               {
