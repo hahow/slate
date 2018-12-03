@@ -385,7 +385,8 @@ function BeforePlugin() {
     // typing. However, certain characters also move the selection before
     // we're able to handle it, so prevent their default behavior.
     if (isComposing) {
-      if (Hotkeys.isCompose(event)) event.preventDefault()
+      if (Hotkeys.isCompose(event) && event.key !== 'Backspace')
+        event.preventDefault()
       return
     }
 
