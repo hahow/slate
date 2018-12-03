@@ -385,9 +385,6 @@ class Content extends React.Component {
         break
       }
 
-      // Notice: This is a workaround solution
-      // iOS 上使用者用 IME 組完字後，要把內容塞到 document model
-      case 'insertFromComposition':
       case 'insertReplacementText': // intentional fallthru
       case 'insertText': {
         // `data` should have the text for the `insertText` input type and
