@@ -1,9 +1,8 @@
 import isPlainObject from 'is-plain-object'
-import logger from 'slate-dev-logger'
 import { List, Map, Record } from 'immutable'
 
 import KeyUtils from '../utils/key-utils'
-import MODEL_TYPES, { isType } from '../constants/model-types'
+import Node from './node'
 
 /**
  * Default properties.
@@ -12,9 +11,9 @@ import MODEL_TYPES, { isType } from '../constants/model-types'
  */
 
 const DEFAULTS = {
-  data: new Map(),
+  data: undefined,
   key: undefined,
-  nodes: new List(),
+  nodes: undefined,
 }
 
 /**
@@ -66,64 +65,10 @@ class Document extends Record(DEFAULTS) {
     const document = new Document({
       key,
       data: new Map(data),
-      nodes: Document.createChildren(nodes),
+      nodes: Node.createList(nodes),
     })
 
     return document
-  }
-
-  /**
-   * Alias `fromJS`.
-   */
-
-  static fromJS = Document.fromJSON
-
-  /**
-   * Check if `any` is a `Document`.
-   *
-   * @param {Any} any
-   * @return {Boolean}
-   */
-
-  static isDocument = isType.bind(null, 'DOCUMENT')
-
-  /**
-   * Object.
-   *
-   * @return {String}
-   */
-
-  get object() {
-    return 'document'
-  }
-
-  get kind() {
-    logger.deprecate(
-      'slate@0.32.0',
-      'The `kind` property of Slate objects has been renamed to `object`.'
-    )
-    return this.object
-  }
-
-  /**
-   * Check if the document is empty.
-   * Returns true if all it's children nodes are empty.
-   *
-   * @return {Boolean}
-   */
-
-  get isEmpty() {
-    return !this.nodes.some(child => !child.isEmpty)
-  }
-
-  /**
-   * Get the concatenated text of all the document's children.
-   *
-   * @return {String}
-   */
-
-  get text() {
-    return this.getText()
   }
 
   /**
@@ -146,21 +91,7 @@ class Document extends Record(DEFAULTS) {
 
     return object
   }
-
-  /**
-   * Alias `toJS`.
-   */
-
-  toJS(options) {
-    return this.toJSON(options)
-  }
 }
-
-/**
- * Attach a pseudo-symbol for type checking.
- */
-
-Document.prototype[MODEL_TYPES.DOCUMENT] = true
 
 /**
  * Export.

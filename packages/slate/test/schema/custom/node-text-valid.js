@@ -1,17 +1,11 @@
 /** @jsx h */
 
-import { NODE_TEXT_INVALID } from 'slate-schema-violations'
 import h from '../../helpers/h'
 
 export const schema = {
   blocks: {
     paragraph: {
       text: /^\d*$/,
-      normalize: (change, { code, node }) => {
-        if (code == NODE_TEXT_INVALID) {
-          node.nodes.forEach(n => change.removeNodeByKey(n.key))
-        }
-      },
     },
   },
 }

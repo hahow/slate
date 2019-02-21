@@ -14,6 +14,7 @@ import Embeds from './embeds'
 import Emojis from './emojis'
 import ForcedLayout from './forced-layout'
 import History from './history'
+import Versions from './versions'
 import HoveringMenu from './hovering-menu'
 import HugeDocument from './huge-document'
 import Images from './images'
@@ -27,8 +28,10 @@ import RTL from './rtl'
 import ReadOnly from './read-only'
 import RichText from './rich-text'
 import SearchHighlighting from './search-highlighting'
+import InputTester from './input-tester'
 import SyncingOperations from './syncing-operations'
 import Tables from './tables'
+import Mentions from './mentions'
 
 /**
  * Examples.
@@ -58,6 +61,9 @@ const EXAMPLES = [
   ['Forced Layout', ForcedLayout, '/forced-layout'],
   ['Huge Document', HugeDocument, '/huge-document'],
   ['History', History, '/history'],
+  ['Versions', Versions, '/versions'],
+  ['Input Tester', InputTester, '/input-tester'],
+  ['Mentions', Mentions, '/mentions'],
 ]
 
 /**
@@ -102,7 +108,9 @@ const TabList = styled('div')`
   }
 `
 
-const Tab = styled(({ active, ...props }) => <RouterLink {...props} />)`
+const MaskedRouterLink = ({ active, ...props }) => <RouterLink {...props} />
+
+const Tab = styled(MaskedRouterLink)`
   display: inline-block;
   margin-bottom: 0.2em;
   padding: 0.2em 0.5em;

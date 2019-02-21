@@ -25,7 +25,6 @@ export const config = {
             return {
               object: 'inline',
               type: 'linebreak',
-              isVoid: true,
             }
           }
         }
@@ -42,11 +41,13 @@ export const output = (
   <value>
     <document>
       <paragraph>
-        <b>
-          one
-          <linebreak />
-          two
-        </b>
+        <text>
+          <b>one</b>
+        </text>
+        <linebreak />
+        <text>
+          <b>two</b>
+        </text>
       </paragraph>
     </document>
   </value>

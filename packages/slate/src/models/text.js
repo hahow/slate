@@ -1,9 +1,8 @@
 import isPlainObject from 'is-plain-object'
-import logger from 'slate-dev-logger'
+import warning from 'tiny-warning'
 import { List, OrderedSet, Record, Set } from 'immutable'
 
 import Leaf from './leaf'
-import MODEL_TYPES, { isType } from '../constants/model-types'
 import KeyUtils from '../utils/key-utils'
 import memoize from '../utils/memoize'
 
@@ -14,7 +13,7 @@ import memoize from '../utils/memoize'
  */
 
 const DEFAULTS = {
-  leaves: List(),
+  leaves: undefined,
   key: undefined,
 }
 
@@ -90,9 +89,9 @@ class Text extends Record(DEFAULTS) {
 
     if (!leaves) {
       if (object.ranges) {
-        logger.deprecate(
-          'slate@0.27.0',
-          'The `ranges` property of Slate objects has been renamed to `leaves`.'
+        warning(
+          false,
+          'As of slate@0.27.0, the `ranges` property of Slate objects has been renamed to `leaves`.'
         )
 
         leaves = object.ranges
@@ -109,6 +108,10 @@ class Text extends Record(DEFAULTS) {
       throw new Error('leaves must be either Array or Immutable.List')
     }
 
+    if (leaves.size === 0) {
+      leaves = leaves.push(Leaf.create())
+    }
+
     const node = new Text({
       leaves: Leaf.createLeaves(leaves),
       key,
@@ -116,21 +119,6 @@ class Text extends Record(DEFAULTS) {
 
     return node
   }
-
-  /**
-   * Alias `fromJS`.
-   */
-
-  static fromJS = Text.fromJSON
-
-  /**
-   * Check if `any` is a `Text`.
-   *
-   * @param {Any} any
-   * @return {Boolean}
-   */
-
-  static isText = isType.bind(null, 'TEXT')
 
   /**
    * Check if `any` is a list of texts.
@@ -141,54 +129,6 @@ class Text extends Record(DEFAULTS) {
 
   static isTextList(any) {
     return List.isList(any) && any.every(item => Text.isText(item))
-  }
-
-  /**
-   * Object.
-   *
-   * @return {String}
-   */
-
-  get object() {
-    return 'text'
-  }
-
-  get kind() {
-    logger.deprecate(
-      'slate@0.32.0',
-      'The `kind` property of Slate objects has been renamed to `object`.'
-    )
-    return this.object
-  }
-
-  /**
-   * Is the node empty?
-   *
-   * @return {Boolean}
-   */
-
-  get isEmpty() {
-    return this.text == ''
-  }
-
-  /**
-   * Get the concatenated text of the node.
-   *
-   * @return {String}
-   */
-
-  get text() {
-    return this.getString()
-  }
-
-  /**
-   * Get the concatenated text of the node, cached for text getter
-   *
-   * @returns {String}
-   */
-
-  getString() {
-    return this.leaves.reduce((string, leaf) => string + leaf.text, '')
   }
 
   /**
@@ -278,51 +218,57 @@ class Text extends Record(DEFAULTS) {
   }
 
   /**
-   * Get the decorations for the node from a `schema`.
-   *
-   * @param {Schema} schema
-   * @return {Array}
-   */
-
-  getDecorations(schema) {
-    return schema.__getDecorations(this)
-  }
-
-  /**
    * Derive the leaves for a list of `decorations`.
    *
-   * @param {Array|Void} decorations (optional)
+   * @param {List} decorations (optional)
    * @return {List<Leaf>}
    */
 
-  getLeaves(decorations = []) {
+  getLeaves(decorations) {
     let { leaves } = this
-    if (leaves.size === 0) return List.of(Leaf.create({}))
-    if (!decorations || decorations.length === 0) return leaves
-    if (this.text.length === 0) return leaves
-    const { key } = this
 
-    decorations.forEach(range => {
-      const { start, end, marks } = range
+    // PERF: We can exit early without decorations.
+    if (!decorations || decorations.size === 0) return leaves
+
+    // HACK: We shouldn't need this, because text nodes should never be in a
+    // position of not having any leaves...
+    if (leaves.size === 0) {
+      const marks = decorations.map(d => d.mark)
+      const leaf = Leaf.create({ marks })
+      return List([leaf])
+    }
+
+    // HACK: this shouldn't be necessary, because the loop below should handle
+    // the `0` case without failures. It may already even, not sure.
+    if (this.text.length === 0) {
+      const marks = decorations.map(d => d.mark)
+      const leaf = Leaf.create({ marks })
+      return List([leaf])
+    }
+
+    const { key, text } = this
+
+    decorations.forEach(dec => {
+      const { start, end, mark } = dec
       const hasStart = start.key == key
       const hasEnd = end.key == key
 
       if (hasStart && hasEnd) {
         const index = hasStart ? start.offset : 0
-        const length = hasEnd ? end.offset - index : this.text.length - index
+        const length = hasEnd ? end.offset - index : text.length - index
 
         if (length < 1) return
-        if (index >= this.text.length) return
+        if (index >= text.length) return
 
-        if (index !== 0 || length < this.text.length) {
+        if (index !== 0 || length < text.length) {
           const [before, bundle] = Leaf.splitLeaves(leaves, index)
           const [middle, after] = Leaf.splitLeaves(bundle, length)
-          leaves = before.concat(middle.map(x => x.addMarks(marks)), after)
+          leaves = before.concat(middle.map(x => x.addMark(mark)), after)
           return
         }
       }
 
-      leaves = leaves.map(x => x.addMarks(marks))
+      leaves = leaves.map(x => x.addMark(mark))
     })
 
     if (leaves === this.leaves) return leaves
@@ -382,20 +328,12 @@ class Text extends Record(DEFAULTS) {
     const result = this.leaves.first().marks
     if (result.size === 0) return result
 
-    return result.withMutations(x => {
+    return result.toOrderedSet().withMutations(x => {
       this.leaves.forEach(c => {
         x.intersect(c.marks)
         if (x.size === 0) return false
       })
     })
-  }
-
-  getFirstText() {
-    return this
-  }
-
-  getLastText() {
-    return this
   }
 
   /**
@@ -487,28 +425,6 @@ class Text extends Record(DEFAULTS) {
   }
 
   /**
-   * Get a node by `key`, to parallel other nodes.
-   *
-   * @param {String} key
-   * @return {Node|Null}
-   */
-
-  getNode(key) {
-    return this.key == key ? this : null
-  }
-
-  /**
-   * Check if the node has a node by `key`, to parallel other nodes.
-   *
-   * @param {String} key
-   * @return {Boolean}
-   */
-
-  hasNode(key) {
-    return !!this.getNode(key)
-  }
-
-  /**
    * Insert `text` at `index`.
    *
    * @param {Numbder} offset
@@ -547,17 +463,6 @@ class Text extends Record(DEFAULTS) {
     )
 
     return this.setLeaves(nextLeaves)
-  }
-
-  /**
-   * Regenerate the node's key.
-   *
-   * @return {Text}
-   */
-
-  regenerateKey() {
-    const key = KeyUtils.create()
-    return this.set('key', key)
   }
 
   /**
@@ -663,14 +568,6 @@ class Text extends Record(DEFAULTS) {
   }
 
   /**
-   * Alias `toJS`.
-   */
-
-  toJS(options) {
-    return this.toJSON(options)
-  }
-
-  /**
    * Update a `mark` at `index` and `length` with `properties`.
    *
    * @param {Number} index
@@ -731,82 +628,38 @@ class Text extends Record(DEFAULTS) {
   }
 
   /**
-   * Normalize the text node with a `schema`.
-   *
-   * @param {Schema} schema
-   * @return {Function|Void}
-   */
-
-  normalize(schema) {
-    return schema.normalizeNode(this)
-  }
-
-  /**
-   * Validate the text node against a `schema`.
-   *
-   * @param {Schema} schema
-   * @return {Error|Void}
-   */
-
-  validate(schema) {
-    return schema.validateNode(this)
-  }
-
-  /**
-   * Get the first invalid descendant
-   * PERF: Do not cache this method; because it can cause cycle reference
-   *
-   * @param {Schema} schema
-   * @returns {Text|Null}
-   */
-
-  getFirstInvalidDescendant(schema) {
-    return this.validate(schema) ? this : null
-  }
-
-  /**
    * Set leaves with normalized `leaves`
    *
-   * @param {Schema} schema
-   * @returns {Text|Null}
+   * @param {List} leaves
+   * @returns {Text}
    */
 
   setLeaves(leaves) {
-    const result = Leaf.createLeaves(leaves)
+    leaves = Leaf.createLeaves(leaves)
 
-    if (result.size === 1) {
-      const first = result.first()
+    if (leaves.size === 1) {
+      const first = leaves.first()
 
       if (!first.marks || first.marks.size === 0) {
         if (first.text === '') {
-          return this.set('leaves', List())
+          return this.set('leaves', List([Leaf.create()]))
         }
       }
     }
 
-    return this.set('leaves', Leaf.createLeaves(leaves))
+    if (leaves.size === 0) {
+      leaves = leaves.push(Leaf.create())
+    }
+
+    return this.set('leaves', leaves)
   }
 }
-
-/**
- * Attach a pseudo-symbol for type checking.
- */
-
-Text.prototype[MODEL_TYPES.TEXT] = true
 
 /**
  * Memoize read methods.
  */
 
-memoize(Text.prototype, [
-  'getDecorations',
-  'getActiveMarks',
-  'getMarks',
-  'getMarksAsArray',
-  'normalize',
-  'validate',
-  'getString',
-])
+memoize(Text.prototype, ['getActiveMarks', 'getMarks', 'getMarksAsArray'])
 
 /**
  * Export.

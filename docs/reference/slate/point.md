@@ -90,6 +90,36 @@ Return a JSON representation of the point.
 
 ## Checking Methods
 
+### `isAfterRange`
+
+`isAfterRange(range: Range) => Boolean`
+
+Determine whether the point is after a `range`.
+
+### `isAtEndOfRange`
+
+`isAtEndOfRange(range: Range) => Boolean`
+
+Determine whether the point is at the end of a `range`.
+
+### `isAtStartOfRange`
+
+`isAtStartOfRange(range: Range) => Boolean`
+
+Determine whether the point is at the start of a `range`.
+
+### `isBeforeRange`
+
+`isBeforeRange(range: Range) => Boolean`
+
+Determine whether the point is before a `range`.
+
+### `isInRange`
+
+`isInRange(range: Range) => Boolean`
+
+Determine whether the point is inside a `range`.
+
 ### `isAtEndOfNode`
 
 `isAtEndOfNode(node: Node) => Boolean`
@@ -171,3 +201,9 @@ Return a new point with a new `offset`.
 `setPath(path: List|Array|Null) => Point`
 
 Return a new point with a new `path`.
+
+### `unset`
+
+`unset() => Point`
+
+Return a new point with the key, path, and offset all set to `null`.

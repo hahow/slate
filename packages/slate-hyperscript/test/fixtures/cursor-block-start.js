@@ -1,6 +1,6 @@
 /** @jsx h */
 
-import h from '../..'
+import h from 'slate-hyperscript'
 
 export const input = (
   <value>
@@ -21,14 +21,13 @@ export const output = {
   object: 'value',
   document: {
     object: 'document',
-    key: '3',
+    key: '2',
     data: {},
     nodes: [
       {
         object: 'block',
         key: '1',
         type: 'paragraph',
-        isVoid: false,
         data: {},
         nodes: [
           {
@@ -47,7 +46,7 @@ export const output = {
     ],
   },
   selection: {
-    object: 'range',
+    object: 'selection',
     anchor: {
       object: 'point',
       key: '0',
@@ -61,7 +60,6 @@ export const output = {
       offset: 0,
     },
     isFocused: true,
-    isAtomic: false,
     marks: null,
   },
 }

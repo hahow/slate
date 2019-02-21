@@ -78,7 +78,8 @@ function defaultParseHtml(html) {
 
   const parsed = new DOMParser().parseFromString(html, 'text/html')
   const { body } = parsed
-  return body
+  // COMPAT: in IE 11 body is null if html is an empty string
+  return body || window.document.createElement('body')
 }
 
 /**
@@ -143,7 +144,6 @@ class Html {
       const block = {
         object: 'block',
         data: {},
-        isVoid: false,
         ...defaultBlock,
         nodes: [node],
       }
@@ -158,7 +158,6 @@ class Html {
         {
           object: 'block',
           data: {},
-          isVoid: false,
           ...defaultBlock,
           nodes: [
             {

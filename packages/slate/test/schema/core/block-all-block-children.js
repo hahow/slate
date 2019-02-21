@@ -15,38 +15,12 @@ export const input = (
   </value>
 )
 
-export const output = {
-  object: 'value',
-  document: {
-    object: 'document',
-    data: {},
-    nodes: [
-      {
-        object: 'block',
-        type: 'quote',
-        isVoid: false,
-        data: {},
-        nodes: [
-          {
-            object: 'block',
-            type: 'paragraph',
-            isVoid: false,
-            data: {},
-            nodes: [
-              {
-                object: 'text',
-                leaves: [
-                  {
-                    object: 'leaf',
-                    text: 'one',
-                    marks: [],
-                  },
-                ],
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
-}
+export const output = (
+  <value>
+    <document>
+      <quote>
+        <paragraph>one</paragraph>
+      </quote>
+    </document>
+  </value>
+)

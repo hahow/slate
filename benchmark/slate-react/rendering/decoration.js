@@ -34,11 +34,17 @@ const decorations = texts.flatMap((t, index) => {
   if (t.length === 0) return []
   return [
     {
-      anchorKey: t.key,
-      anchorOffset: 0,
-      focusKey: t.key,
-      focusOffset: 1,
-      marks: [{ type: 'underline' }],
+      anchor: {
+        key: t.key,
+        offset: 0,
+      },
+      focus: {
+        key: t.key,
+        offset: 1,
+      },
+      mark: {
+        type: 'underline',
+      },
     },
   ]
 })
